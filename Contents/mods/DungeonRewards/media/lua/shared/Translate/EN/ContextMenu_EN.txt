@@ -1,0 +1,5 @@
+ContextMenu_EN = {
+    ContextMenu_DRewards_Open = "Open Dungeon Rewards",
+    ContextMenu_DRewards_Register = "Register Dungeon Reward Container",
+    ContextMenu_DRewards_Manage = "Manage Dungeon Reward Container",
+}
