@@ -1,4 +1,5 @@
 local Globals = require("ElyonLib/Core/Globals")
+local GrantUtils = require("ElyonLib/Rewards/GrantUtils")
 local FileUtils = require("ElyonLib/FileUtils/FileUtils")
 local JSON = require("ElyonLib/FileUtils/JSON")
 local Logger = require("DungeonRewards/Logger")
@@ -178,58 +179,14 @@ function Server.PushSnapshotToPlayer(player, message, level)
     return snapshot
 end
 
-local function findPerk(perkName)
-    perkName = tostring(perkName or "")
-    if perkName == "" then
-        return nil
-    end
-    if Perks and Perks[perkName] then
-        return Perks[perkName]
-    end
-    if Perks and Perks.FromString then
-        local perk = Perks.FromString(perkName)
-        if perk and PerkFactory.getPerk(perk) then
-            return perk
-        end
-    end
-    return nil
-end
-
 local function grantItemReward(player, reward, summaries, errors)
+    -- DungeonRewards normalizes item type to reward.item; map to GrantUtils signature
     local itemType = tostring(reward.item or reward.fullType or "")
-    local count = math.floor(tonumber(reward.count) or 1)
-    if itemType == "" or count <= 0 then
-        errors[#errors + 1] = "Invalid item reward"
-        return
-    end
-
-    local scriptItem = ScriptManager.instance:getItem(itemType)
-    if not scriptItem then
-        errors[#errors + 1] = "Missing item " .. itemType
-        return
-    end
-
-    if Globals.isServer then
-        player:sendObjectChange("addItemOfType", { type = itemType, count = count })
-    else
-        for i = 1, count do
-            player:getInventory():AddItem(itemType)
-        end
-    end
-    summaries[#summaries + 1] = string.format("%dx %s", count, scriptItem:getDisplayName())
+    GrantUtils.grantItem(player, itemType, reward.count, summaries, errors)
 end
 
 local function grantXpReward(player, reward, summaries, errors)
-    local perk = findPerk(reward.perk)
-    local amount = tonumber(reward.amount) or 0
-    if not perk or amount == 0 then
-        errors[#errors + 1] = "Invalid XP reward " .. tostring(reward.perk)
-        return
-    end
-    player:getXp():AddXP(perk, amount)
-    local perkInfo = PerkFactory.getPerk(perk)
-    summaries[#summaries + 1] = string.format("%s XP +%s", perkInfo and perkInfo:getName() or tostring(reward.perk),
-        tostring(amount))
+    GrantUtils.grantXp(player, reward.perk, reward.amount, summaries, errors)
 end
 
 local function grantTraitReward(player, reward, summaries, errors)

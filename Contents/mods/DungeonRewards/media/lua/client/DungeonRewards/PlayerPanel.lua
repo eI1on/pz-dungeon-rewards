@@ -6,6 +6,7 @@ local ColorUtils = require("ElyonLib/ColorUtils/ColorUtils")
 local ItemUtils = require("ElyonLib/ItemUtils/ItemUtils")
 local TextUtils = require("ElyonLib/TextUtils/TextUtils")
 local UIUtils = require("ElyonLib/UI/Utils/UIUtils")
+local Theme = require("ElyonLib/UI/Theme/Theme")
 
 local PlayerPanel = ISCollapsableWindow:derive("DungeonRewardsPlayerPanel")
 PlayerPanel.instance = nil
@@ -19,48 +20,34 @@ local FONT_SMALL = getTextManager():getFontHeight(UIFont.Small)
 local FONT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
 
 local C = {
-    W = 650,
-    H = 500,
-    MIN_W = 650,
-    MIN_H = 500,
-    PAD = 15,
-    GAP = 10,
-    TOP = 35,
-    BUTTON_H = 25,
-    CARD_MIN_W = 130,
-    CARD_H = 150,
-    GRID_PAD = 15,
-    SCROLLBAR_W = 20,
-    NOTICE_TICKS = 300,
-    SPIN_FRAMES = 20,
-    COLORS = {
-        BACKGROUND = { r = 0.055, g = 0.06, b = 0.06, a = 0.94 },
-        PANEL = { r = 0.10, g = 0.105, b = 0.10, a = 0.88 },
-        CARD = { r = 0.14, g = 0.13, b = 0.115, a = 0.96 },
-        CARD_HOVER = { r = 0.20, g = 0.18, b = 0.14, a = 0.98 },
-        BORDER = { r = 0.62, g = 0.56, b = 0.44, a = 0.9 },
-        TEXT = { r = 0.95, g = 0.94, b = 0.88, a = 1 },
-        MUTED = { r = 0.70, g = 0.70, b = 0.66, a = 1 },
-        GOLD = { r = 0.95, g = 0.76, b = 0.34, a = 1 },
-        READY = { r = 0.48, g = 0.82, b = 0.48, a = 1 },
-        ERROR = { r = 0.95, g = 0.42, b = 0.38, a = 1 },
+    SIZE = {
+        W = 650, H = 500, MIN_W = 650, MIN_H = 500,
     },
+    LAYOUT = {
+        PAD = 15, GAP = 10, TOP = 35,
+    },
+    CTRL = {
+        BUTTON_H = 25,
+    },
+    GRID = {
+        CARD_MIN_W  = 130,
+        CARD_H      = 150,
+        PAD         = 15,
+        SCROLLBAR_W = 20,
+    },
+    ANIM = {
+        NOTICE_TICKS = 300,
+        SPIN_FRAMES  = 20,
+    },
+    COLORS = Theme.standardColors(),
 }
 
 local function buttonStyle(button, primary)
-    button.borderColor = copyColor(C.COLORS.BORDER)
-    button.textColor = copyColor(C.COLORS.TEXT)
-    if primary then
-        button.backgroundColor = { r = 0.28, g = 0.22, b = 0.11, a = 0.95 }
-        button.backgroundColorMouseOver = { r = 0.38, g = 0.30, b = 0.15, a = 0.98 }
-    else
-        button.backgroundColor = { r = 0.16, g = 0.16, b = 0.15, a = 0.95 }
-        button.backgroundColorMouseOver = { r = 0.24, g = 0.23, b = 0.20, a = 0.98 }
-    end
+    Theme.applyButtonStyle(button, primary and "primary" or nil)
 end
 
 local function addButton(panel, x, y, w, text, internal, primary)
-    local button = ISButton:new(x, y, w, C.BUTTON_H, text, panel, PlayerPanel.onClick)
+    local button = ISButton:new(x, y, w, C.CTRL.BUTTON_H, text, panel, PlayerPanel.onClick)
     button.internal = internal
     button:initialise()
     button:instantiate()
@@ -82,25 +69,30 @@ end
 function PlayerPanel:new(x, y, width, height, playerObj)
     local o = ISCollapsableWindow.new(self, x, y, width, height)
     setmetatable(o, self)
-    self.__index = self
-    o.playerObj = playerObj or getPlayer()
-    o.payload = nil
-    o.revealed = {}
-    o.cardScroll = 0
-    o.revealRunning = false
-    o.revealIndex = 0
-    o.revealFrame = 0
-    o.spinPreview = {}
-    o.gridRect = { x = C.PAD, y = C.TOP + C.BUTTON_H + 92, w = width - C.PAD * 2, h = height - 170 }
-    o.scrollDragging = false
-    o.statusMessage = getText("IGUI_DRewards_StatusWaiting")
-    o.statusLevel = "info"
-    o.statusTicks = C.NOTICE_TICKS
-    o.backgroundColor = C.COLORS.BACKGROUND
-    o.borderColor = C.COLORS.BORDER
-    o.title = getText("IGUI_DRewards_Title")
-    o.minimumWidth = C.MIN_W
-    o.minimumHeight = C.MIN_H
+    self.__index      = self
+    o.playerObj       = playerObj or getPlayer()
+    o.payload         = nil
+    o.revealed        = {}
+    o.cardScroll      = 0
+    o.revealRunning   = false
+    o.revealIndex     = 0
+    o.revealFrame     = 0
+    o.spinPreview     = {}
+    o.gridRect        = {
+        x = C.LAYOUT.PAD,
+        y = C.LAYOUT.TOP + C.CTRL.BUTTON_H + 92,
+        w = width - C.LAYOUT.PAD * 2,
+        h = height - 170
+    }
+    o.scrollDragging  = false
+    o.statusMessage   = getText("IGUI_DRewards_StatusWaiting")
+    o.statusLevel     = "info"
+    o.statusTicks     = C.ANIM.NOTICE_TICKS
+    o.backgroundColor = Theme.copy(Theme.colors.background)
+    o.borderColor     = Theme.copy(Theme.colors.border)
+    o.title           = getText("IGUI_DRewards_Title")
+    o.minimumWidth    = C.SIZE.MIN_W
+    o.minimumHeight   = C.SIZE.MIN_H
     return o
 end
 
@@ -111,30 +103,30 @@ end
 function PlayerPanel:createChildren()
     ISCollapsableWindow.createChildren(self)
     self:setResizable(true)
-    self.revealBtn = addButton(self, C.PAD, C.TOP, 120, getText("IGUI_DRewards_RevealNext"), "REVEAL", true)
-    self.claimBtn = addButton(self, C.PAD + 130, C.TOP, 120, getText("IGUI_DRewards_Claim"), "CLAIM", true)
-    self.closeBtn = addButton(self, C.PAD + 250, C.TOP, 80, getText("IGUI_DRewards_Close"), "CLOSE")
+    self.revealBtn = addButton(self, C.LAYOUT.PAD, C.LAYOUT.TOP, 120, getText("IGUI_DRewards_RevealNext"), "REVEAL", true)
+    self.claimBtn = addButton(self, C.LAYOUT.PAD + 130, C.LAYOUT.TOP, 120, getText("IGUI_DRewards_Claim"), "CLAIM", true)
+    self.closeBtn = addButton(self, C.LAYOUT.PAD + 250, C.LAYOUT.TOP, 80, getText("IGUI_DRewards_Close"), "CLOSE")
 end
 
 function PlayerPanel:layoutChildren()
     if self.isCollapsed then
         return
     end
-    self.revealBtn:setX(C.PAD)
-    self.revealBtn:setY(C.TOP)
+    self.revealBtn:setX(C.LAYOUT.PAD)
+    self.revealBtn:setY(C.LAYOUT.TOP)
     self.revealBtn:setWidth(math.min(128, math.max(112, math.floor(self.width * 0.18))))
-    self.claimBtn:setX(self.revealBtn:getRight() + C.GAP)
-    self.claimBtn:setY(C.TOP)
+    self.claimBtn:setX(self.revealBtn:getRight() + C.LAYOUT.GAP)
+    self.claimBtn:setY(C.LAYOUT.TOP)
     self.claimBtn:setWidth(112)
-    self.closeBtn:setX(self.claimBtn:getRight() + C.GAP)
-    self.closeBtn:setY(C.TOP)
+    self.closeBtn:setX(self.claimBtn:getRight() + C.LAYOUT.GAP)
+    self.closeBtn:setY(C.LAYOUT.TOP)
     self.closeBtn:setWidth(82)
-    local gridY = C.TOP + C.BUTTON_H + 88
+    local gridY = C.LAYOUT.TOP + C.CTRL.BUTTON_H + 88
     self.gridRect = {
-        x = C.PAD,
+        x = C.LAYOUT.PAD,
         y = gridY,
-        w = math.max(100, self.width - C.PAD * 2),
-        h = math.max(90, self.height - gridY - C.PAD - FONT_SMALL - 14),
+        w = math.max(100, self.width - C.LAYOUT.PAD * 2),
+        h = math.max(90, self.height - gridY - C.LAYOUT.PAD - FONT_SMALL - 14),
     }
     self.cardScroll = math.max(0, math.min(self.cardScroll or 0, self:getMaxCardScroll()))
 end
@@ -142,7 +134,7 @@ end
 function PlayerPanel:setStatus(message, level)
     self.statusMessage = tostring(message or "")
     self.statusLevel = level or "info"
-    self.statusTicks = self.statusMessage ~= "" and C.NOTICE_TICKS or 0
+    self.statusTicks = self.statusMessage ~= "" and C.ANIM.NOTICE_TICKS or 0
 end
 
 function PlayerPanel:loadPayload(payload)
@@ -162,26 +154,27 @@ function PlayerPanel:loadPayload(payload)
 end
 
 function PlayerPanel:getGridMetrics()
-    local rect = self.gridRect or { w = self.width - (C.PAD * 2) }
-    local contentW = math.max(80, rect.w - C.GRID_PAD * 2 - C.SCROLLBAR_W - C.GAP)
+    local rect = self.gridRect or { w = self.width - (C.LAYOUT.PAD * 2) }
+    local contentW = math.max(80, rect.w - C.GRID.PAD * 2 - C.GRID.SCROLLBAR_W - C.LAYOUT.GAP)
     local columns = contentW >= 600 and 4 or 3
-    columns = math.max(1, math.min(columns, math.max(1, math.floor((contentW + C.GAP) / (C.CARD_MIN_W + C.GAP)))))
-    local cardW = math.floor((contentW - ((columns - 1) * C.GAP)) / columns)
+    columns = math.max(1,
+        math.min(columns, math.max(1, math.floor((contentW + C.LAYOUT.GAP) / (C.GRID.CARD_MIN_W + C.LAYOUT.GAP)))))
+    local cardW = math.floor((contentW - ((columns - 1) * C.LAYOUT.GAP)) / columns)
     return columns, cardW
 end
 
 function PlayerPanel:getCardAt(x, y)
     local rewards = self.payload and self.payload.rolledRewards or {}
     local columns, cardW = self:getGridMetrics()
-    local rect = self.gridRect or { x = C.PAD, y = C.TOP + C.BUTTON_H + 88 }
-    local startX = rect.x + C.GRID_PAD
-    local startY = rect.y + C.GRID_PAD - (self.cardScroll or 0)
+    local rect = self.gridRect or { x = C.LAYOUT.PAD, y = C.LAYOUT.TOP + C.CTRL.BUTTON_H + 88 }
+    local startX = rect.x + C.GRID.PAD
+    local startY = rect.y + C.GRID.PAD - (self.cardScroll or 0)
     for i = 1, #rewards do
         local col = (i - 1) % columns
         local row = math.floor((i - 1) / columns)
-        local cardX = startX + col * (cardW + C.GAP)
-        local cardY = startY + row * (C.CARD_H + C.GAP)
-        if x >= cardX and x <= cardX + cardW and y >= cardY and y <= cardY + C.CARD_H then
+        local cardX = startX + col * (cardW + C.LAYOUT.GAP)
+        local cardY = startY + row * (C.GRID.CARD_H + C.LAYOUT.GAP)
+        if x >= cardX and x <= cardX + cardW and y >= cardY and y <= cardY + C.GRID.CARD_H then
             return i
         end
     end
@@ -192,9 +185,9 @@ function PlayerPanel:getMaxCardScroll()
     local rewards = self.payload and self.payload.rolledRewards or {}
     local columns = self:getGridMetrics()
     local rows = math.ceil(#rewards / columns)
-    local gridH = rows * C.CARD_H + math.max(0, rows - 1) * C.GAP + C.GRID_PAD * 2
+    local gridH = rows * C.GRID.CARD_H + math.max(0, rows - 1) * C.LAYOUT.GAP + C.GRID.PAD * 2
     local rect = self.gridRect or {}
-    local visibleH = rect.h or (self.height - (C.TOP + C.BUTTON_H + 88) - 42)
+    local visibleH = rect.h or (self.height - (C.LAYOUT.TOP + C.CTRL.BUTTON_H + 88) - 42)
     return math.max(0, gridH - visibleH)
 end
 
@@ -210,9 +203,9 @@ function PlayerPanel:getScrollTrackRect()
         return nil
     end
     return {
-        x = rect.x + rect.w - C.SCROLLBAR_W - 4,
+        x = rect.x + rect.w - C.GRID.SCROLLBAR_W - 4,
         y = rect.y + 6,
-        w = C.SCROLLBAR_W,
+        w = C.GRID.SCROLLBAR_W,
         h = math.max(1, rect.h - 12),
     }
 end
@@ -254,13 +247,13 @@ function PlayerPanel:scrollToCard(index)
     end
     local columns = self:getGridMetrics()
     local row = math.floor((index - 1) / columns)
-    local cardTop = C.GRID_PAD + row * (C.CARD_H + C.GAP)
-    local visibleH = ((self.gridRect and self.gridRect.h) or (self.height - (C.TOP + C.BUTTON_H + 88) - 42)) -
-        C.GRID_PAD
+    local cardTop = C.GRID.PAD + row * (C.GRID.CARD_H + C.LAYOUT.GAP)
+    local visibleH = ((self.gridRect and self.gridRect.h) or (self.height - (C.LAYOUT.TOP + C.CTRL.BUTTON_H + 88) - 42)) -
+        C.GRID.PAD
     if cardTop < (self.cardScroll or 0) then
         self.cardScroll = cardTop
-    elseif cardTop + C.CARD_H > (self.cardScroll or 0) + visibleH then
-        self.cardScroll = math.min(self:getMaxCardScroll(), cardTop + C.CARD_H - visibleH)
+    elseif cardTop + C.GRID.CARD_H > (self.cardScroll or 0) + visibleH then
+        self.cardScroll = math.min(self:getMaxCardScroll(), cardTop + C.GRID.CARD_H - visibleH)
     end
 end
 
@@ -374,7 +367,7 @@ function PlayerPanel:update()
             local previewIndex = 1 + ((self.revealFrame * 3 + self.revealIndex) % #rewards)
             self.spinPreview[self.revealIndex] = rewards[previewIndex]
         end
-        if self.revealFrame >= C.SPIN_FRAMES then
+        if self.revealFrame >= C.ANIM.SPIN_FRAMES then
             self.revealed[self.revealIndex] = true
             self.spinPreview[self.revealIndex] = nil
             getSoundManager():playUISound("UISelectListItem")
@@ -396,16 +389,16 @@ function PlayerPanel:update()
 end
 
 function PlayerPanel:drawCard(x, y, w, reward, index)
-    local revealed = self.revealed[index] == true
-    local spinning = self.revealRunning and self.revealIndex == index
+    local T             = Theme.colors
+    local revealed      = self.revealed[index] == true
+    local spinning      = self.revealRunning and self.revealIndex == index
     local visibleReward = (spinning and self.spinPreview[index]) or reward
-    local mouseOver = self:getMouseX() >= x and self:getMouseX() <= x + w and self:getMouseY() >= y and
-        self:getMouseY() <= y + C.CARD_H
-    local bg = mouseOver and C.COLORS.CARD_HOVER or C.COLORS.CARD
-    self:drawRect(x + 2, y + 3, w, C.CARD_H, 0.25, 0, 0, 0)
-    self:drawRect(x, y, w, C.CARD_H, bg.a, bg.r, bg.g, bg.b)
-    self:drawRectBorder(x, y, w, C.CARD_H, C.COLORS.BORDER.a, C.COLORS.BORDER.r, C.COLORS.BORDER.g,
-        C.COLORS.BORDER.b)
+    local mouseOver     = self:getMouseX() >= x and self:getMouseX() <= x + w and self:getMouseY() >= y and
+        self:getMouseY() <= y + C.GRID.CARD_H
+    local bg            = mouseOver and C.COLORS.CARD_HOVER or C.COLORS.CARD
+    self:drawRect(x + 2, y + 3, w, C.GRID.CARD_H, T.shadow.a, T.shadow.r, T.shadow.g, T.shadow.b)
+    self:drawRect(x, y, w, C.GRID.CARD_H, bg.a, bg.r, bg.g, bg.b)
+    self:drawRectBorder(x, y, w, C.GRID.CARD_H, T.border.a, T.border.r, T.border.g, T.border.b)
 
     if not revealed and not spinning then
         self:drawTextCentre("?", x + w / 2, y + 34, C.COLORS.GOLD.r, C.COLORS.GOLD.g, C.COLORS.GOLD.b, 1,
@@ -430,22 +423,20 @@ function PlayerPanel:drawCard(x, y, w, reward, index)
 end
 
 function PlayerPanel:drawScrollBar(rect)
+    local T     = Theme.colors
     local track = self:getScrollTrackRect()
     local thumb = self:getScrollThumbRect()
     if not track then
         return
     end
 
-    self:drawRect(track.x, track.y, track.w, track.h, 0.72, 0.025, 0.025, 0.025)
-    self:drawRectBorder(track.x, track.y, track.w, track.h, 0.85, C.COLORS.BORDER.r, C.COLORS.BORDER.g,
-        C.COLORS.BORDER.b)
+    self:drawRect(track.x, track.y, track.w, track.h, T.scrollTrack.a, T.scrollTrack.r, T.scrollTrack.g, T.scrollTrack.b)
+    self:drawRectBorder(track.x, track.y, track.w, track.h, 0.85, T.border.r, T.border.g, T.border.b)
     if thumb then
         local active = self:getMaxCardScroll() > 0
-        local alpha = active and 0.95 or 0.38
-        self:drawRect(thumb.x + 3, thumb.y + 3, thumb.w - 6, thumb.h - 6, alpha, C.COLORS.BORDER.r,
-            C.COLORS.BORDER.g, C.COLORS.BORDER.b)
-        self:drawRectBorder(thumb.x + 3, thumb.y + 3, thumb.w - 6, thumb.h - 6, alpha, C.COLORS.GOLD.r,
-            C.COLORS.GOLD.g, C.COLORS.GOLD.b)
+        local alpha  = active and 0.95 or 0.38
+        self:drawRect(thumb.x + 3, thumb.y + 3, thumb.w - 6, thumb.h - 6, alpha, T.border.r, T.border.g, T.border.b)
+        self:drawRectBorder(thumb.x + 3, thumb.y + 3, thumb.w - 6, thumb.h - 6, alpha, T.gold.r, T.gold.g, T.gold.b)
     end
 end
 
@@ -458,35 +449,37 @@ function PlayerPanel:prerender()
 
     local payload = self.payload or {}
     local preset = payload.preset or {}
-    local y = C.TOP + C.BUTTON_H + 12
-    self:drawRect(C.PAD, y - 5, self.width - C.PAD * 2, 60, 0.45, C.COLORS.PANEL.r, C.COLORS.PANEL.g,
+    local y = C.LAYOUT.TOP + C.CTRL.BUTTON_H + 12
+    self:drawRect(C.LAYOUT.PAD, y - 5, self.width - C.LAYOUT.PAD * 2, 60, 0.45, C.COLORS.PANEL.r, C.COLORS.PANEL.g,
         C.COLORS.PANEL.b)
-    self:drawText(trimToWidth(UIFont.Medium, preset.name or getText("IGUI_DRewards_Title"), self.width - C.PAD * 2),
-        C.PAD + 8, y, C.COLORS.TEXT.r, C.COLORS.TEXT.g, C.COLORS.TEXT.b, 1, UIFont.Medium)
+    self:drawText(
+        trimToWidth(UIFont.Medium, preset.name or getText("IGUI_DRewards_Title"), self.width - C.LAYOUT.PAD * 2),
+        C.LAYOUT.PAD + 8, y, C.COLORS.TEXT.r, C.COLORS.TEXT.g, C.COLORS.TEXT.b, 1, UIFont.Medium)
     y = y + FONT_MEDIUM + 4
-    self:drawText(trimToWidth(UIFont.Small, preset.description or "", self.width - C.PAD * 2 - 16), C.PAD + 8, y,
+    self:drawText(trimToWidth(UIFont.Small, preset.description or "", self.width - C.LAYOUT.PAD * 2 - 16),
+        C.LAYOUT.PAD + 8, y,
         C.COLORS.MUTED.r, C.COLORS.MUTED.g, C.COLORS.MUTED.b, 1, UIFont.Small)
 
     local rewards = payload.rolledRewards or {}
     local columns, cardW = self:getGridMetrics()
     local rect = self.gridRect or {
-        x = C.PAD,
-        y = C.TOP + C.BUTTON_H + 88,
-        w = self.width - C.PAD * 2,
-        h = self.height - C.TOP - C.BUTTON_H - 130
+        x = C.LAYOUT.PAD,
+        y = C.LAYOUT.TOP + C.CTRL.BUTTON_H + 88,
+        w = self.width - C.LAYOUT.PAD * 2,
+        h = self.height - C.LAYOUT.TOP - C.CTRL.BUTTON_H - 130
     }
     self:drawRect(rect.x, rect.y, rect.w, rect.h, 0.28, C.COLORS.PANEL.r, C.COLORS.PANEL.g, C.COLORS.PANEL.b)
     self:drawRectBorder(rect.x, rect.y, rect.w, rect.h, 0.65, C.COLORS.BORDER.r, C.COLORS.BORDER.g,
         C.COLORS.BORDER.b)
-    local startX = rect.x + C.GRID_PAD
-    local startY = rect.y + C.GRID_PAD - (self.cardScroll or 0)
+    local startX = rect.x + C.GRID.PAD
+    local startY = rect.y + C.GRID.PAD - (self.cardScroll or 0)
     self:setStencilRect(rect.x, rect.y, rect.w, rect.h)
     for i = 1, #rewards do
         local col = (i - 1) % columns
         local row = math.floor((i - 1) / columns)
-        local cardY = startY + row * (C.CARD_H + C.GAP)
-        if cardY + C.CARD_H >= rect.y and cardY <= rect.y + rect.h then
-            self:drawCard(startX + col * (cardW + C.GAP), cardY, cardW, rewards[i], i)
+        local cardY = startY + row * (C.GRID.CARD_H + C.LAYOUT.GAP)
+        if cardY + C.GRID.CARD_H >= rect.y and cardY <= rect.y + rect.h then
+            self:drawCard(startX + col * (cardW + C.LAYOUT.GAP), cardY, cardW, rewards[i], i)
         end
     end
     self:drawScrollBar(rect)
@@ -498,18 +491,20 @@ function PlayerPanel:render()
     if not self.statusMessage or self.statusMessage == "" then
         return
     end
-    local color = C.COLORS.MUTED
+    local T     = Theme.colors
+    local color = T.textMuted
     if self.statusLevel == "error" then
-        color = C.COLORS.ERROR
+        color = T.danger
     elseif self.statusLevel == "warning" then
-        color = C.COLORS.GOLD
+        color = T.warning
     elseif self.statusLevel == "info" then
-        color = C.COLORS.READY
+        color = T.success
     end
-    local footerY = self.height - C.PAD - FONT_SMALL - 4
-    self:drawRect(C.PAD - 2, footerY - 2, self.width - C.PAD * 2 + 4, FONT_SMALL + 6, 0.0, C.COLORS.BACKGROUND.r,
-        C.COLORS.BACKGROUND.g, C.COLORS.BACKGROUND.b)
-    self:drawText(trimToWidth(UIFont.Small, self.statusMessage or "", self.width - C.PAD * 2), C.PAD, footerY,
+    local footerY = self.height - C.LAYOUT.PAD - FONT_SMALL - 4
+    self:drawRect(C.LAYOUT.PAD - 2, footerY - 2, self.width - C.LAYOUT.PAD * 2 + 4, FONT_SMALL + 6, 0.0,
+        T.background.r, T.background.g, T.background.b)
+    self:drawText(trimToWidth(UIFont.Small, self.statusMessage or "", self.width - C.LAYOUT.PAD * 2), C.LAYOUT.PAD,
+        footerY,
         color.r, color.g, color.b, 1, UIFont.Small)
 end
 
@@ -528,8 +523,8 @@ function PlayerPanel.openPanel(playerObj, containerKey)
 
     local screenWidth = getCore():getScreenWidth()
     local screenHeight = getCore():getScreenHeight()
-    local width = math.min(C.W, screenWidth - 40)
-    local height = math.min(C.H, screenHeight - 40)
+    local width = math.min(C.SIZE.W, screenWidth - 40)
+    local height = math.min(C.SIZE.H, screenHeight - 40)
     local panel = PlayerPanel:new(math.max(20, (screenWidth - width) / 2), math.max(20, (screenHeight - height) / 2),
         width, height, playerObj)
     panel:initialise()

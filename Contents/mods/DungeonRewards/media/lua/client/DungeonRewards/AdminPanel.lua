@@ -10,6 +10,7 @@ local ColorUtils = require("ElyonLib/ColorUtils/ColorUtils")
 local MathUtils = require("ElyonLib/MathUtils/MathUtils")
 local TextUtils = require("ElyonLib/TextUtils/TextUtils")
 local UIUtils = require("ElyonLib/UI/Utils/UIUtils")
+local Theme = require("ElyonLib/UI/Theme/Theme")
 
 local AdminPanel = ISCollapsableWindow:derive("DungeonRewardsAdminPanel")
 AdminPanel.instance = nil
@@ -27,58 +28,39 @@ local FONT_SMALL = getTextManager():getFontHeight(UIFont.Small)
 local FONT_MEDIUM = getTextManager():getFontHeight(UIFont.Medium)
 
 local C = {
-    W = 850,
-    H = 600,
-    MIN_W = 850,
-    MIN_H = 600,
-    PAD = 12,
-    GAP = 8,
-    TOP = 34,
-    BUTTON_H = 24,
-    FIELD_H = 22,
-    LIST_ROW = 38,
-    REWARD_ROW = 44,
-    LIST_SCROLL_W = 18,
-    NOTICE_TICKS = 300,
-    COLORS = {
-        BACKGROUND = { r = 0.055, g = 0.060, b = 0.060, a = 0.94 },
-        BAND = { r = 0.085, g = 0.090, b = 0.088, a = 0.86 },
-        FIELD = { r = 0.120, g = 0.120, b = 0.114, a = 0.96 },
-        ALT = { r = 0.155, g = 0.150, b = 0.140, a = 0.84 },
-        SELECTED = { r = 0.230, g = 0.300, b = 0.300, a = 0.88 },
-        BORDER = { r = 0.580, g = 0.580, b = 0.540, a = 0.90 },
-        TEXT = { r = 0.940, g = 0.940, b = 0.900, a = 1.00 },
-        MUTED = { r = 0.700, g = 0.700, b = 0.660, a = 1.00 },
-        READY = { r = 0.480, g = 0.820, b = 0.480, a = 1.00 },
-        GOLD = { r = 0.950, g = 0.740, b = 0.320, a = 1.00 },
-        ERROR = { r = 0.950, g = 0.420, b = 0.380, a = 1.00 },
+    SIZE = {
+        W = 850, H = 600, MIN_W = 850, MIN_H = 600,
     },
+    LAYOUT = {
+        PAD = 12, GAP = 8, TOP = 34,
+    },
+    CTRL = {
+        BUTTON_H = 24, FIELD_H = 22,
+    },
+    LIST = {
+        ROW        = 38,
+        REWARD_ROW = 44,
+        SCROLL_W   = 18,
+    },
+    ANIM = {
+        NOTICE_TICKS = 300,
+    },
+    COLORS = Theme.standardColors(),
 }
 
 local REWARD_TYPES = {
-    { label = getText("IGUI_DRewards_RewardType_Item"), data = "item" },
-    { label = getText("IGUI_DRewards_RewardType_XP"), data = "xp" },
-    { label = getText("IGUI_DRewards_RewardType_Trait"), data = "trait" },
+    { label = getText("IGUI_DRewards_RewardType_Item"),   data = "item" },
+    { label = getText("IGUI_DRewards_RewardType_XP"),     data = "xp" },
+    { label = getText("IGUI_DRewards_RewardType_Trait"),  data = "trait" },
     { label = getText("IGUI_DRewards_RewardType_Custom"), data = "custom" },
 }
 
 local function applyButtonStyle(button, variant)
-    button.borderColor = copyColor(C.COLORS.BORDER)
-    button.textColor = copyColor(C.COLORS.TEXT)
-    if variant == "primary" then
-        button.backgroundColor = { r = 0.20, g = 0.34, b = 0.34, a = 0.95 }
-        button.backgroundColorMouseOver = { r = 0.27, g = 0.44, b = 0.44, a = 0.98 }
-    elseif variant == "danger" then
-        button.backgroundColor = { r = 0.42, g = 0.16, b = 0.14, a = 0.95 }
-        button.backgroundColorMouseOver = { r = 0.56, g = 0.22, b = 0.19, a = 0.98 }
-    else
-        button.backgroundColor = { r = 0.17, g = 0.17, b = 0.16, a = 0.95 }
-        button.backgroundColorMouseOver = { r = 0.25, g = 0.25, b = 0.23, a = 0.98 }
-    end
+    Theme.applyButtonStyle(button, variant)
 end
 
 local function addButton(panel, x, y, w, text, internal, variant)
-    local button = ISButton:new(x, y, w, C.BUTTON_H, text, panel, AdminPanel.onClick)
+    local button = ISButton:new(x, y, w, C.CTRL.BUTTON_H, text, panel, AdminPanel.onClick)
     button.internal = internal
     button:initialise()
     button:instantiate()
@@ -95,15 +77,13 @@ local function addEntry(panel, x, y, w, h, multiline)
         entry:setMultipleLine(true)
         entry:setMaxLines(1000)
     end
-    entry.backgroundColor = copyColor(C.COLORS.FIELD)
-    entry.borderColor = copyColor(C.COLORS.BORDER)
+    Theme.applyFieldStyle(entry)
     panel:addChild(entry)
     return entry
 end
 
 local function styleList(list)
-    list.backgroundColor = copyColor(C.COLORS.FIELD)
-    list.borderColor = copyColor(C.COLORS.BORDER)
+    Theme.applyListStyle(list)
     list.drawBorder = true
 end
 
@@ -144,22 +124,22 @@ end
 function AdminPanel:new(x, y, width, height, playerObj)
     local o = ISCollapsableWindow.new(self, x, y, width, height)
     setmetatable(o, self)
-    self.__index = self
-    o.playerObj = playerObj or getPlayer()
-    o.snapshot = DungeonRewards.ClientSnapshot or {}
-    o.selectedPresetId = nil
+    self.__index           = self
+    o.playerObj            = playerObj or getPlayer()
+    o.snapshot             = DungeonRewards.ClientSnapshot or {}
+    o.selectedPresetId     = nil
     o.selectedContainerKey = DungeonRewards.ActiveContainer
-    o.selectedRewardIndex = 1
-    o.workingRewards = {}
-    o.loadingReward = false
-    o.statusMessage = getText("IGUI_DRewards_StatusWaiting")
-    o.statusLevel = "info"
-    o.statusTicks = C.NOTICE_TICKS
-    o.backgroundColor = C.COLORS.BACKGROUND
-    o.borderColor = C.COLORS.BORDER
-    o.title = getText("IGUI_DRewards_AdminTitle")
-    o.minimumWidth = C.MIN_W
-    o.minimumHeight = C.MIN_H
+    o.selectedRewardIndex  = 1
+    o.workingRewards       = {}
+    o.loadingReward        = false
+    o.statusMessage        = getText("IGUI_DRewards_StatusWaiting")
+    o.statusLevel          = "info"
+    o.statusTicks          = C.ANIM.NOTICE_TICKS
+    o.backgroundColor      = Theme.copy(Theme.colors.background)
+    o.borderColor          = Theme.copy(Theme.colors.border)
+    o.title                = getText("IGUI_DRewards_AdminTitle")
+    o.minimumWidth         = C.SIZE.MIN_W
+    o.minimumHeight        = C.SIZE.MIN_H
     return o
 end
 
@@ -174,7 +154,7 @@ function AdminPanel:createChildren()
     self.presetsList = ISScrollingListBox:new(0, 0, 100, 100)
     self.presetsList:initialise()
     self.presetsList:instantiate()
-    self.presetsList.itemheight = C.LIST_ROW
+    self.presetsList.itemheight = C.LIST.ROW
     self.presetsList.parentPanel = self
     self.presetsList.doDrawItem = AdminPanel.drawPresetItem
     self.presetsList.onMouseDown = AdminPanel.onPresetMouseDown
@@ -184,7 +164,7 @@ function AdminPanel:createChildren()
     self.containersList = ISScrollingListBox:new(0, 0, 100, 100)
     self.containersList:initialise()
     self.containersList:instantiate()
-    self.containersList.itemheight = C.LIST_ROW
+    self.containersList.itemheight = C.LIST.ROW
     self.containersList.parentPanel = self
     self.containersList.doDrawItem = AdminPanel.drawContainerItem
     self.containersList.onMouseDown = AdminPanel.onContainerMouseDown
@@ -196,19 +176,19 @@ function AdminPanel:createChildren()
     self.exportBtn = addButton(self, 0, 0, 80, getText("IGUI_DRewards_Export"), "EXPORT")
     self.resetBtn = addButton(self, 0, 0, 104, getText("IGUI_DRewards_Reset"), "RESET", "danger")
 
-    self.presetIdEntry = addEntry(self, 0, 0, 100, C.FIELD_H)
-    self.presetNameEntry = addEntry(self, 0, 0, 100, C.FIELD_H)
-    self.rollCountEntry = addEntry(self, 0, 0, 44, C.FIELD_H)
+    self.presetIdEntry = addEntry(self, 0, 0, 100, C.CTRL.FIELD_H)
+    self.presetNameEntry = addEntry(self, 0, 0, 100, C.CTRL.FIELD_H)
+    self.rollCountEntry = addEntry(self, 0, 0, 44, C.CTRL.FIELD_H)
     self.descriptionEntry = addEntry(self, 0, 0, 100, 42, true)
-    self.enabledTick = ISTickBox:new(0, 0, 84, C.FIELD_H, "", self, AdminPanel.onTickChanged)
+    self.enabledTick = ISTickBox:new(0, 0, 84, C.CTRL.FIELD_H, "", self, AdminPanel.onTickChanged)
     self.enabledTick:initialise()
     self.enabledTick:addOption(getText("IGUI_DRewards_Enabled"))
     self:addChild(self.enabledTick)
-    self.duplicatesTick = ISTickBox:new(0, 0, 124, C.FIELD_H, "", self, AdminPanel.onTickChanged)
+    self.duplicatesTick = ISTickBox:new(0, 0, 124, C.CTRL.FIELD_H, "", self, AdminPanel.onTickChanged)
     self.duplicatesTick:initialise()
     self.duplicatesTick:addOption(getText("IGUI_DRewards_AllowDuplicates"))
     self:addChild(self.duplicatesTick)
-    self.onceTick = ISTickBox:new(0, 0, 138, C.FIELD_H, "", self, AdminPanel.onTickChanged)
+    self.onceTick = ISTickBox:new(0, 0, 138, C.CTRL.FIELD_H, "", self, AdminPanel.onTickChanged)
     self.onceTick:initialise()
     self.onceTick:addOption(getText("IGUI_DRewards_OncePerPlayer"))
     self:addChild(self.onceTick)
@@ -220,7 +200,7 @@ function AdminPanel:createChildren()
     self.rewardsList = ISScrollingListBox:new(0, 0, 100, 100)
     self.rewardsList:initialise()
     self.rewardsList:instantiate()
-    self.rewardsList.itemheight = C.REWARD_ROW
+    self.rewardsList.itemheight = C.LIST.REWARD_ROW
     self.rewardsList.parentPanel = self
     self.rewardsList.doDrawItem = AdminPanel.drawRewardItem
     self.rewardsList.onMouseDown = AdminPanel.onRewardMouseDown
@@ -232,26 +212,26 @@ function AdminPanel:createChildren()
     self.deleteRewardBtn = addButton(self, 0, 0, 94, getText("IGUI_DRewards_DeleteReward"), "DELETE_REWARD", "danger")
     self.autoWeightBtn = addButton(self, 0, 0, 118, getText("IGUI_DRewards_AutoWeights"), "AUTO_WEIGHTS")
 
-    self.rewardTypeCombo = ISComboBox:new(0, 0, 100, C.FIELD_H, self, AdminPanel.onRewardTypeChanged)
+    self.rewardTypeCombo = ISComboBox:new(0, 0, 100, C.CTRL.FIELD_H, self, AdminPanel.onRewardTypeChanged)
     self.rewardTypeCombo:initialise()
     self:addChild(self.rewardTypeCombo)
     for i = 1, #REWARD_TYPES do
         self.rewardTypeCombo:addOptionWithData(REWARD_TYPES[i].label, REWARD_TYPES[i].data)
     end
 
-    self.rewardTitleEntry = addEntry(self, 0, 0, 100, C.FIELD_H)
-    self.rewardTargetEntry = addEntry(self, 0, 0, 100, C.FIELD_H)
-    self.rewardCountEntry = addEntry(self, 0, 0, 56, C.FIELD_H)
-    self.rewardWeightEntry = addEntry(self, 0, 0, 56, C.FIELD_H)
+    self.rewardTitleEntry = addEntry(self, 0, 0, 100, C.CTRL.FIELD_H)
+    self.rewardTargetEntry = addEntry(self, 0, 0, 100, C.CTRL.FIELD_H)
+    self.rewardCountEntry = addEntry(self, 0, 0, 56, C.CTRL.FIELD_H)
+    self.rewardWeightEntry = addEntry(self, 0, 0, 56, C.CTRL.FIELD_H)
     self.weightMinusBtn = addButton(self, 0, 0, 26, "-", "WEIGHT_MINUS")
     self.weightPlusBtn = addButton(self, 0, 0, 26, "+", "WEIGHT_PLUS")
-    self.rewardModeCombo = ISComboBox:new(0, 0, 84, C.FIELD_H, self, AdminPanel.onRewardTypeChanged)
+    self.rewardModeCombo = ISComboBox:new(0, 0, 84, C.CTRL.FIELD_H, self, AdminPanel.onRewardTypeChanged)
     self.rewardModeCombo:initialise()
     self.rewardModeCombo:addOptionWithData("add", "add")
     self.rewardModeCombo:addOptionWithData("remove", "remove")
     self:addChild(self.rewardModeCombo)
 
-    self.assignCombo = ISComboBox:new(0, 0, 100, C.FIELD_H, self, AdminPanel.onPresetComboChanged)
+    self.assignCombo = ISComboBox:new(0, 0, 100, C.CTRL.FIELD_H, self, AdminPanel.onPresetComboChanged)
     self.assignCombo:initialise()
     self:addChild(self.assignCombo)
     self.assignBtn = addButton(self, 0, 0, 96, getText("IGUI_DRewards_Assign"), "ASSIGN", "primary")
@@ -265,88 +245,90 @@ function AdminPanel:layoutChildren()
         return
     end
 
-    local pad = C.PAD
+    local pad = C.LAYOUT.PAD
     local leftW = math.max(270, math.min(310, math.floor(self.width * 0.31)))
-    local contentX = pad + leftW + C.GAP
+    local contentX = pad + leftW + C.LAYOUT.GAP
     local contentW = self.width - contentX - pad
     local bottomY = self.height - pad - FONT_SMALL - 8
-    local y = C.TOP
+    local y = C.LAYOUT.TOP
 
-    setBounds(self.refreshBtn, pad, y, 88, C.BUTTON_H)
-    setBounds(self.importBtn, pad + 96, y, 78, C.BUTTON_H)
-    setBounds(self.exportBtn, pad + 182, y, 78, C.BUTTON_H)
-    setBounds(self.resetBtn, pad, y + C.BUTTON_H + C.GAP, leftW, C.BUTTON_H)
+    setBounds(self.refreshBtn, pad, y, 88, C.CTRL.BUTTON_H)
+    setBounds(self.importBtn, pad + 96, y, 78, C.CTRL.BUTTON_H)
+    setBounds(self.exportBtn, pad + 182, y, 78, C.CTRL.BUTTON_H)
+    setBounds(self.resetBtn, pad, y + C.CTRL.BUTTON_H + C.LAYOUT.GAP, leftW, C.CTRL.BUTTON_H)
 
-    local listTop = self.resetBtn:getY() + C.BUTTON_H + 28
+    local listTop = self.resetBtn:getY() + C.CTRL.BUTTON_H + 28
     local listGap = 32
-    local containerToolsH = C.FIELD_H + C.GAP + C.BUTTON_H + 48
-    local listH = math.floor((bottomY - listTop - listGap - C.BUTTON_H - C.GAP - containerToolsH) * 0.50)
+    local containerToolsH = C.CTRL.FIELD_H + C.LAYOUT.GAP + C.CTRL.BUTTON_H + 48
+    local listH = math.floor((bottomY - listTop - listGap - C.CTRL.BUTTON_H - C.LAYOUT.GAP - containerToolsH) * 0.50)
     listH = math.max(150, listH)
     setBounds(self.presetsList, pad, listTop, leftW, listH)
     local containersY = listTop + listH + listGap
-    local containersH = math.max(130, bottomY - containersY - C.BUTTON_H - C.GAP - containerToolsH)
+    local containersH = math.max(130, bottomY - containersY - C.CTRL.BUTTON_H - C.LAYOUT.GAP - containerToolsH)
     setBounds(self.containersList, pad, containersY, leftW, containersH)
 
     local assignY = self.containersList:getY() + self.containersList:getHeight() + 28
-    setBounds(self.assignCombo, pad, assignY, leftW, C.FIELD_H)
-    local smallButtonW = math.floor((leftW - C.GAP) / 2)
-    setBounds(self.assignBtn, pad, assignY + C.FIELD_H + C.GAP, smallButtonW, C.BUTTON_H)
-    setBounds(self.resetClaimsBtn, pad + smallButtonW + C.GAP, assignY + C.FIELD_H + C.GAP, leftW - smallButtonW -
-        C.GAP, C.BUTTON_H)
-    setBounds(self.removeContainerBtn, pad, assignY + C.FIELD_H + C.GAP + C.BUTTON_H + C.GAP, leftW, C.BUTTON_H)
+    setBounds(self.assignCombo, pad, assignY, leftW, C.CTRL.FIELD_H)
+    local smallButtonW = math.floor((leftW - C.LAYOUT.GAP) / 2)
+    setBounds(self.assignBtn, pad, assignY + C.CTRL.FIELD_H + C.LAYOUT.GAP, smallButtonW, C.CTRL.BUTTON_H)
+    setBounds(self.resetClaimsBtn, pad + smallButtonW + C.LAYOUT.GAP, assignY + C.CTRL.FIELD_H + C.LAYOUT.GAP,
+        leftW - smallButtonW -
+        C.LAYOUT.GAP, C.CTRL.BUTTON_H)
+    setBounds(self.removeContainerBtn, pad, assignY + C.CTRL.FIELD_H + C.LAYOUT.GAP + C.CTRL.BUTTON_H + C.LAYOUT.GAP,
+        leftW,
+        C.CTRL.BUTTON_H)
 
-    local presetY = C.TOP + 28
-    local smallW = math.max(112, math.floor((contentW - C.GAP * 3) * 0.22))
-    local nameW = math.max(190, contentW - smallW - 78 - C.GAP * 2)
-    setBounds(self.presetIdEntry, contentX, presetY + 18, smallW, C.FIELD_H)
-    setBounds(self.presetNameEntry, contentX + smallW + C.GAP, presetY + 18, nameW, C.FIELD_H)
-    setBounds(self.rollCountEntry, contentX + smallW + nameW + C.GAP * 2, presetY + 18, 58, C.FIELD_H)
+    local presetY = C.LAYOUT.TOP + 28
+    local smallW = math.max(112, math.floor((contentW - C.LAYOUT.GAP * 3) * 0.22))
+    local nameW = math.max(190, contentW - smallW - 78 - C.LAYOUT.GAP * 2)
+    setBounds(self.presetIdEntry, contentX, presetY + 18, smallW, C.CTRL.FIELD_H)
+    setBounds(self.presetNameEntry, contentX + smallW + C.LAYOUT.GAP, presetY + 18, nameW, C.CTRL.FIELD_H)
+    setBounds(self.rollCountEntry, contentX + smallW + nameW + C.LAYOUT.GAP * 2, presetY + 18, 58, C.CTRL.FIELD_H)
     local ticksY = presetY + 48
-    setBounds(self.enabledTick, contentX, ticksY, 100, C.FIELD_H)
-    setBounds(self.duplicatesTick, contentX + 112, ticksY, 124, C.FIELD_H)
-    setBounds(self.onceTick, contentX + 248, ticksY, math.min(150, contentW - 248), C.FIELD_H)
+    setBounds(self.enabledTick, contentX, ticksY, 100, C.CTRL.FIELD_H)
+    setBounds(self.duplicatesTick, contentX + 112, ticksY, 124, C.CTRL.FIELD_H)
+    setBounds(self.onceTick, contentX + 248, ticksY, math.min(150, contentW - 248), C.CTRL.FIELD_H)
     setBounds(self.descriptionEntry, contentX, presetY + 88, contentW, 42)
-    setBounds(self.newPresetBtn, contentX, presetY + 140, 92, C.BUTTON_H)
-    setBounds(self.savePresetBtn, contentX + 100, presetY + 140, 106, C.BUTTON_H)
-    setBounds(self.deletePresetBtn, contentX + 214, presetY + 140, 112, C.BUTTON_H)
+    setBounds(self.newPresetBtn, contentX, presetY + 140, 92, C.CTRL.BUTTON_H)
+    setBounds(self.savePresetBtn, contentX + 100, presetY + 140, 106, C.CTRL.BUTTON_H)
+    setBounds(self.deletePresetBtn, contentX + 214, presetY + 140, 112, C.CTRL.BUTTON_H)
 
     local rewardTop = presetY + 198
     local rewardListW = math.max(300, math.floor(contentW * 0.48))
     local rewardH = math.max(220, bottomY - rewardTop - 76)
     setBounds(self.rewardsList, contentX, rewardTop, rewardListW, rewardH)
-    setBounds(self.addRewardBtn, contentX, rewardTop + rewardH + C.GAP, 84, C.BUTTON_H)
-    setBounds(self.applyRewardBtn, contentX + 92, rewardTop + rewardH + C.GAP, 92, C.BUTTON_H)
-    setBounds(self.deleteRewardBtn, contentX + 192, rewardTop + rewardH + C.GAP, 100, C.BUTTON_H)
-    setBounds(self.autoWeightBtn, contentX + 300, rewardTop + rewardH + C.GAP, 122, C.BUTTON_H)
+    setBounds(self.addRewardBtn, contentX, rewardTop + rewardH + C.LAYOUT.GAP, 84, C.CTRL.BUTTON_H)
+    setBounds(self.applyRewardBtn, contentX + 92, rewardTop + rewardH + C.LAYOUT.GAP, 92, C.CTRL.BUTTON_H)
+    setBounds(self.deleteRewardBtn, contentX + 192, rewardTop + rewardH + C.LAYOUT.GAP, 100, C.CTRL.BUTTON_H)
+    setBounds(self.autoWeightBtn, contentX + 300, rewardTop + rewardH + C.LAYOUT.GAP, 122, C.CTRL.BUTTON_H)
 
-    local editorX = contentX + rewardListW + C.GAP
-    local editorW = contentW - rewardListW - C.GAP
+    local editorX = contentX + rewardListW + C.LAYOUT.GAP
+    local editorW = contentW - rewardListW - C.LAYOUT.GAP
     local fieldY = rewardTop + 20
     local typeW = math.min(112, math.max(86, math.floor(editorW * 0.38)))
-    setBounds(self.rewardTypeCombo, editorX, fieldY, typeW, C.FIELD_H)
-    setBounds(self.rewardTitleEntry, editorX + typeW + C.GAP, fieldY, math.max(92, editorW - typeW - C.GAP),
-        C.FIELD_H)
+    setBounds(self.rewardTypeCombo, editorX, fieldY, typeW, C.CTRL.FIELD_H)
+    setBounds(self.rewardTitleEntry, editorX + typeW + C.LAYOUT.GAP, fieldY, math.max(92, editorW - typeW - C.LAYOUT.GAP),
+        C.CTRL.FIELD_H)
     fieldY = fieldY + 52
-    setBounds(self.rewardTargetEntry, editorX, fieldY, editorW, C.FIELD_H)
+    setBounds(self.rewardTargetEntry, editorX, fieldY, editorW, C.CTRL.FIELD_H)
     fieldY = fieldY + 52
-    setBounds(self.rewardCountEntry, editorX, fieldY, 72, C.FIELD_H)
-    setBounds(self.rewardModeCombo, editorX + 80, fieldY, 82, C.FIELD_H)
+    setBounds(self.rewardCountEntry, editorX, fieldY, 72, C.CTRL.FIELD_H)
+    setBounds(self.rewardModeCombo, editorX + 80, fieldY, 82, C.CTRL.FIELD_H)
     if editorW >= 316 then
-        setBounds(self.rewardWeightEntry, editorX + 174, fieldY, 68, C.FIELD_H)
-        setBounds(self.weightMinusBtn, editorX + 250, fieldY, 26, C.BUTTON_H)
-        setBounds(self.weightPlusBtn, editorX + 282, fieldY, 26, C.BUTTON_H)
+        setBounds(self.rewardWeightEntry, editorX + 174, fieldY, 68, C.CTRL.FIELD_H)
+        setBounds(self.weightMinusBtn, editorX + 250, fieldY, 26, C.CTRL.BUTTON_H)
+        setBounds(self.weightPlusBtn, editorX + 282, fieldY, 26, C.CTRL.BUTTON_H)
     else
-        setBounds(self.rewardWeightEntry, editorX, fieldY + 48, 68, C.FIELD_H)
-        setBounds(self.weightMinusBtn, editorX + 76, fieldY + 48, 26, C.BUTTON_H)
-        setBounds(self.weightPlusBtn, editorX + 108, fieldY + 48, 26, C.BUTTON_H)
+        setBounds(self.rewardWeightEntry, editorX, fieldY + 48, 68, C.CTRL.FIELD_H)
+        setBounds(self.weightMinusBtn, editorX + 76, fieldY + 48, 26, C.CTRL.BUTTON_H)
+        setBounds(self.weightPlusBtn, editorX + 108, fieldY + 48, 26, C.CTRL.BUTTON_H)
     end
-
 end
 
 function AdminPanel:setStatus(message, level)
     self.statusMessage = tostring(message or "")
     self.statusLevel = level or "info"
-    self.statusTicks = self.statusMessage ~= "" and C.NOTICE_TICKS or 0
+    self.statusTicks = self.statusMessage ~= "" and C.ANIM.NOTICE_TICKS or 0
 end
 
 function AdminPanel:onSnapshotReceived(snapshot)
@@ -437,7 +419,8 @@ function AdminPanel:selectRewardType(rewardType)
 end
 
 function AdminPanel:loadRewardIntoEditor(reward)
-    reward = reward or Shared.NormalizeReward({ type = "item", item = "Base.WaterBottleFull", count = 1, weight = 10 }, 1)
+    reward = reward or
+        Shared.NormalizeReward({ type = "item", item = "Base.WaterBottleFull", count = 1, weight = 10 }, 1)
     self.loadingReward = true
     self:selectRewardType(reward.type)
     setEntryText(self.rewardTitleEntry, reward.title or "")
@@ -572,8 +555,12 @@ function AdminPanel:onClick(button)
     elseif action == "RESET" then
         Shared.ExecuteCommand("ResetPresets", {})
     elseif action == "ADD_REWARD" then
-        self.workingRewards[#self.workingRewards + 1] = Shared.NormalizeReward({ type = "item", weight = 10,
-            item = "Base.WaterBottleFull", count = 1 }, #self.workingRewards + 1)
+        self.workingRewards[#self.workingRewards + 1] = Shared.NormalizeReward({
+            type = "item",
+            weight = 10,
+            item = "Base.WaterBottleFull",
+            count = 1
+        }, #self.workingRewards + 1)
         self.selectedRewardIndex = #self.workingRewards
         self:populateRewardsList()
         self:loadRewardIntoEditor(self.workingRewards[self.selectedRewardIndex])
@@ -687,7 +674,7 @@ function AdminPanel.drawPresetItem(list, y, item, alt)
     local selected = list.selected == item.index or (list.parentPanel and list.parentPanel.selectedPresetId == preset.id)
     local bg = selected and C.COLORS.SELECTED or (alt and C.COLORS.ALT or C.COLORS.FIELD)
     local total = Shared.GetPresetWeightTotal(preset)
-    local contentW = list:getWidth() - C.LIST_SCROLL_W
+    local contentW = list:getWidth() - C.LIST.SCROLL_W
     list:drawRect(0, y, list:getWidth(), list.itemheight - 1, bg.a, bg.r, bg.g, bg.b)
     list:drawText(trimToWidth(UIFont.Small, preset.name, contentW - 12), 8, y + 4, C.COLORS.TEXT.r,
         C.COLORS.TEXT.g, C.COLORS.TEXT.b, 1, UIFont.Small)
@@ -702,13 +689,13 @@ function AdminPanel.drawContainerItem(list, y, item, alt)
     local selected = list.selected == item.index or
         (list.parentPanel and list.parentPanel.selectedContainerKey == container.key)
     local bg = selected and C.COLORS.SELECTED or (alt and C.COLORS.ALT or C.COLORS.FIELD)
-    local contentW = list:getWidth() - C.LIST_SCROLL_W
+    local contentW = list:getWidth() - C.LIST.SCROLL_W
     list:drawRect(0, y, list:getWidth(), list.itemheight - 1, bg.a, bg.r, bg.g, bg.b)
     list:drawText(trimToWidth(UIFont.Small, container.name or container.key, contentW - 12), 8, y + 4,
         C.COLORS.TEXT.r, C.COLORS.TEXT.g, C.COLORS.TEXT.b, 1, UIFont.Small)
     list:drawText(trimToWidth(UIFont.Small,
-        string.format("%d,%d,%d | %s", container.x or 0, container.y or 0, container.z or 0,
-            container.presetId ~= "" and container.presetId or "No preset"), contentW - 12), 8, y + 21,
+            string.format("%d,%d,%d | %s", container.x or 0, container.y or 0, container.z or 0,
+                container.presetId ~= "" and container.presetId or "No preset"), contentW - 12), 8, y + 21,
         C.COLORS.MUTED.r, C.COLORS.MUTED.g, C.COLORS.MUTED.b, 1, UIFont.Small)
     return y + list.itemheight
 end
@@ -721,7 +708,7 @@ function AdminPanel.drawRewardItem(list, y, item, alt)
     local total = Shared.GetPresetWeightTotal({ rewards = panel and panel.workingRewards or {} })
     local pct = total > 0 and math.floor(((reward.weight or 0) / total) * 100 + 0.5) or 0
     local fullW = list:getWidth()
-    local w = fullW - C.LIST_SCROLL_W
+    local w = fullW - C.LIST.SCROLL_W
     list:drawRect(0, y, fullW, list.itemheight - 1, bg.a, bg.r, bg.g, bg.b)
     list:drawText(trimToWidth(UIFont.Small,
         string.format("%s | %s", tostring(reward.type or "?"):upper(), reward.title or Shared.GetRewardSummary(reward)),
@@ -739,8 +726,9 @@ function AdminPanel:drawLabel(text, x, y, w)
 end
 
 function AdminPanel:drawSectionTitle(text, x, y, w)
-    self:drawText(text, x, y, C.COLORS.TEXT.r, C.COLORS.TEXT.g, C.COLORS.TEXT.b, 1, UIFont.Medium)
-    self:drawRect(x, y + FONT_MEDIUM + 3, w, 1, 0.55, C.COLORS.BORDER.r, C.COLORS.BORDER.g, C.COLORS.BORDER.b)
+    local T = Theme.colors
+    self:drawText(text, x, y, T.text.r, T.text.g, T.text.b, 1, UIFont.Medium)
+    self:drawRect(x, y + FONT_MEDIUM + 3, w, 1, T.borderLight.a, T.borderLight.r, T.borderLight.g, T.borderLight.b)
 end
 
 function AdminPanel:drawLabels()
@@ -755,8 +743,8 @@ function AdminPanel:drawLabels()
         getText("IGUI_DRewards_NoContainerSelected")
     self:drawLabel(selectedText, self.assignCombo:getX(), self.assignCombo:getY() - FONT_SMALL - 4,
         self.assignCombo:getWidth())
-    self:drawSectionTitle(getText("IGUI_DRewards_PresetEditor"), self.presetIdEntry:getX(), C.TOP,
-        self.width - self.presetIdEntry:getX() - C.PAD)
+    self:drawSectionTitle(getText("IGUI_DRewards_PresetEditor"), self.presetIdEntry:getX(), C.LAYOUT.TOP,
+        self.width - self.presetIdEntry:getX() - C.LAYOUT.PAD)
     self:drawLabel(getText("IGUI_DRewards_PresetId"), self.presetIdEntry:getX(), self.presetIdEntry:getY() - FONT_SMALL -
         4, self.presetIdEntry:getWidth())
     self:drawLabel(getText("IGUI_DRewards_PresetName"), self.presetNameEntry:getX(),
@@ -768,7 +756,7 @@ function AdminPanel:drawLabels()
     self:drawSectionTitle(getText("IGUI_DRewards_Rewards"), self.rewardsList:getX(),
         self.rewardsList:getY() - FONT_MEDIUM - 8, self.rewardsList:getWidth())
     self:drawSectionTitle(getText("IGUI_DRewards_RewardEditor"), self.rewardTypeCombo:getX(),
-        self.rewardsList:getY() - FONT_MEDIUM - 8, self.width - self.rewardTypeCombo:getX() - C.PAD)
+        self.rewardsList:getY() - FONT_MEDIUM - 8, self.width - self.rewardTypeCombo:getX() - C.LAYOUT.PAD)
     self:drawLabel(getText("IGUI_DRewards_RewardType"), self.rewardTypeCombo:getX(),
         self.rewardTypeCombo:getY() - FONT_SMALL - 4, self.rewardTypeCombo:getWidth())
     self:drawLabel(getText("IGUI_DRewards_RewardTitle"), self.rewardTitleEntry:getX(),
@@ -814,12 +802,14 @@ function AdminPanel:render()
     if not self.statusMessage or self.statusMessage == "" then
         return
     end
-    local color = self.statusLevel == "error" and C.COLORS.ERROR or
-        (self.statusLevel == "warning" and C.COLORS.GOLD or C.COLORS.READY)
-    local footerY = self.height - C.PAD - FONT_SMALL
-    self:drawRect(C.PAD - 2, footerY - 2, self.width - C.PAD * 2 + 4, FONT_SMALL + 6, 0.0, C.COLORS.BACKGROUND.r,
-        C.COLORS.BACKGROUND.g, C.COLORS.BACKGROUND.b)
-    self:drawText(trimToWidth(UIFont.Small, self.statusMessage or "", self.width - C.PAD * 2), C.PAD, footerY,
+    local T       = Theme.colors
+    local color   = self.statusLevel == "error" and T.danger or
+        (self.statusLevel == "warning" and T.warning or T.success)
+    local footerY = self.height - C.LAYOUT.PAD - FONT_SMALL
+    self:drawRect(C.LAYOUT.PAD - 2, footerY - 2, self.width - C.LAYOUT.PAD * 2 + 4, FONT_SMALL + 6, 0.0,
+        T.background.r, T.background.g, T.background.b)
+    self:drawText(trimToWidth(UIFont.Small, self.statusMessage or "", self.width - C.LAYOUT.PAD * 2), C.LAYOUT.PAD,
+        footerY,
         color.r, color.g, color.b, 1, UIFont.Small)
 end
 
@@ -837,8 +827,8 @@ function AdminPanel.openPanel(playerObj)
     end
     local screenWidth = getCore():getScreenWidth()
     local screenHeight = getCore():getScreenHeight()
-    local width = math.min(C.W, screenWidth - 40)
-    local height = math.min(C.H, screenHeight - 40)
+    local width = math.min(C.SIZE.W, screenWidth - 40)
+    local height = math.min(C.SIZE.H, screenHeight - 40)
     local panel = AdminPanel:new(math.max(20, (screenWidth - width) / 2), math.max(20, (screenHeight - height) / 2),
         width, height, playerObj)
     panel:initialise()

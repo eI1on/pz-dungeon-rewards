@@ -3,8 +3,8 @@ require "ISUI/ISWorldObjectContextMenu"
 
 local Logger = require("DungeonRewards/Logger")
 local DungeonRewards = require("DungeonRewards/Shared")
-local AdminPanel = require("DungeonRewards/DungeonRewardsAdminPanel")
-local PlayerPanel = require("DungeonRewards/DungeonRewardsPlayerPanel")
+local AdminPanel = require("DungeonRewards/AdminPanel")
+local PlayerPanel = require("DungeonRewards/PlayerPanel")
 
 DungeonRewards.Client = DungeonRewards.Client or {}
 DungeonRewards.Client.ClientCommands = DungeonRewards.Client.ClientCommands or {}

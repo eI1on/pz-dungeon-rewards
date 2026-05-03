@@ -1,4 +1,12 @@
+if not pcall(require, "ElyonLib/Core/Globals") then
+    print("[DungeonRewards] ERROR: ElyonLib is required but not loaded. DungeonRewards will not function.")
+    return {}
+end
+
 local Globals = require("ElyonLib/Core/Globals")
+local AccessLevelUtils = require("ElyonLib/PlayerUtils/AccessLevelUtils")
+local PlayerUtils = require("ElyonLib/PlayerUtils/PlayerUtils")
+local NetUtils = require("ElyonLib/Net/NetUtils")
 local FileUtils = require("ElyonLib/FileUtils/FileUtils")
 local ItemUtils = require("ElyonLib/ItemUtils/ItemUtils")
 local JSON = require("ElyonLib/FileUtils/JSON")
@@ -118,45 +126,11 @@ function Shared.GetPlayerUsername(player)
 end
 
 function Shared.GetPlayerKey(player)
-    if not player then
-        return nil
-    end
-
-    local username = Shared.GetPlayerUsername(player)
-    if username then
-        return username
-    end
-
-    if player.getOnlineID then
-        local onlineId = tonumber(player:getOnlineID())
-        if onlineId and onlineId >= 0 then
-            return "online-" .. tostring(onlineId)
-        end
-    end
-
-    if player.getPlayerNum then
-        return "player-" .. tostring(player:getPlayerNum())
-    end
-
-    return tostring(player)
+    return PlayerUtils.getPlayerKey(player)
 end
 
 function Shared.PlayerHasAdminAccess(player)
-    if Globals.isSingleplayer then
-        return true
-    end
-    if player and player.getAccessLevel then
-        local access = tostring(player:getAccessLevel() or "")
-        return access == "Admin"
-    end
-    if isAdmin and isAdmin() then
-        return true
-    end
-    if getAccessLevel then
-        local access = tostring(getAccessLevel() or "")
-        return access == "Admin"
-    end
-    return false
+    return AccessLevelUtils.hasAdminAccess(player)
 end
 
 function Shared.GenerateID(prefix)
@@ -528,22 +502,7 @@ function Shared.GetCustomRewardDisplayName(reward)
 end
 
 function Shared.ExecuteCommand(command, args)
-    args = args or {}
-    if Globals.isClient and not Globals.isServer then
-        sendClientCommand(DungeonRewards.MODULE, command, args)
-        return true
-    end
-
-    local serverModule = require("DungeonRewards/Server")
-    if not serverModule or not serverModule.Server or not serverModule.Server.ServerCommands then
-        return false
-    end
-    local handler = serverModule.Server.ServerCommands[command]
-    if type(handler) ~= "function" then
-        return false
-    end
-    handler(Shared.GetLocalPlayer(), args)
-    return true
+    return NetUtils.executeCommand(DungeonRewards.MODULE, "DungeonRewards/Server", command, args)
 end
 
 return DungeonRewards
