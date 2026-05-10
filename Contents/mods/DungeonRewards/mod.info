@@ -1,7 +1,7 @@
 name=[B41] Dungeon Rewards
 poster=poster.png
 id=DungeonRewards
-description=Admin-managed dungeon reward containers with weighted loot presets, per-player rolls, reveal-card UI, and item/XP/trait/custom rewards.
+description=Server-side dungeon chests: register containers, weighted reward presets, per-player rolls with a card-reveal UI, in-game admin tools, items/XP/traits/custom Lua - requires ElyonLib.
 require=ElyonLib
 tags=Build 41,Misc,Multiplayer,Interface
 versionMin=41.0

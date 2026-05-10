@@ -1,0 +1,28 @@
+{
+    "Lua.workspace.library": [
+        "${addons}/umbrella/module/library",
+        "${workspaceFolder}/../pz-elyonlib-b41"
+    ],
+    "Lua.runtime.version": "Lua 5.1",
+    "Lua.runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "shared/?.lua",
+        "client/?.lua",
+        "server/?.lua"
+    ],
+    "Lua.completion.requireSeparator": "/",
+    "Lua.workspace.preloadFileSize": 1500,
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.runtime.builtin": {
+        "debug": "disable",
+        "io": "disable",
+        "package": "disable"
+    },
+    "Lua.diagnostics.globals": ["require", "Calendar"],
+    "Lua.diagnostics.disable": ["lowercase-global"],
+    "[lua]": {
+        "editor.defaultFormatter": "JohnnyMorganz.stylua",
+        "editor.formatOnSave": true
+    }
+}
